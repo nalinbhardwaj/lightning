@@ -1270,7 +1270,7 @@ find_shorter_route(const tal_t *ctx, struct routing_state *rstate,
 	while (min_bias < max_bias) {
 		struct chan **route;
 		struct amount_msat this_fee;
-		u64 riskbias = (min_bias + max_bias) / 2;
+		u64 riskbias = min_bias + (max_bias - min_bias) / 2;
 
 		unvisited = dijkstra_prepare(tmpctx, rstate, src, msat,
 					     normal_cost_function);
