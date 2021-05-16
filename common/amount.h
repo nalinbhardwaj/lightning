@@ -155,6 +155,9 @@ WARN_UNUSED_RESULT bool amount_msat_add_fee(struct amount_msat *amt,
 					    u32 fee_base_msat,
 					    u32 fee_proportional_millionths);
 
+/* Get integer base 2 logarithm of amt. */
+u64 amount_msat_ilog(struct amount_msat msat);
+
 /* What is the fee for this tx weight? */
 struct amount_sat amount_tx_fee(u32 fee_per_kw, size_t weight);
 

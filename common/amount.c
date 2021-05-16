@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <bitcoin/chainparams.h>
 #include <ccan/endian/endian.h>
+#include <ccan/ilog/ilog.h>
 #include <ccan/mem/mem.h>
 #include <ccan/tal/str/str.h>
 #include <common/amount.h>
@@ -521,6 +522,11 @@ bool amount_msat_add_fee(struct amount_msat *amt,
 			     fee_base_msat, fee_proportional_millionths))
 		return false;
 	return amount_msat_add(amt, *amt, fee);
+}
+
+u64 amount_msat_ilog(struct amount_msat msat)
+{
+	return ilog64(msat.millisatoshis);
 }
 
 struct amount_sat amount_tx_fee(u32 fee_per_kw, size_t weight)

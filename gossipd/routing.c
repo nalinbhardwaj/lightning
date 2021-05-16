@@ -5,6 +5,7 @@
 #include <bitcoin/script.h>
 #include <ccan/array_size/array_size.h>
 #include <ccan/endian/endian.h>
+#include <ccan/ilog/ilog.h>
 #include <ccan/mem/mem.h>
 #include <ccan/tal/str/str.h>
 #include <common/features.h>
@@ -621,6 +622,7 @@ struct chan *new_chan(struct routing_state *rstate,
 
 /* Too big to reach, but don't overflow if added. */
 #define INFINITE AMOUNT_MSAT(0x3FFFFFFFFFFFFFFFULL)
+#define INFINITE_ILOG STATIC_ILOG_64(0x3FFFFFFFFFFFFFFFULL)
 
 /* We hack a multimap into a uintmap to implement a minheap by cost.
  * This is relatively inefficient, containing an array for each cost
@@ -647,12 +649,17 @@ struct unvisited {
  */
 static WARN_UNUSED_RESULT bool risk_add_fee(struct amount_msat *risk,
 					    struct amount_msat msat,
+					    struct amount_msat htlc_maximum,
 					    u32 delay, double riskfactor,
 					    u64 riskbias)
 {
-	struct amount_msat riskfee;
+	struct amount_msat riskfee, channel_size_penalty;
 
 	if (!amount_msat_scale(&riskfee, msat, riskfactor * delay))
+		return false;
+	channel_size_penalty = amount_msat(INFINITE_ILOG -
+					   amount_msat_ilog(htlc_maximum));
+	if (!amount_msat_add(&riskfee, riskfee, channel_size_penalty))
 		return false;
 	if (!amount_msat_add(&riskfee, riskfee, amount_msat(riskbias)))
 		return false;
@@ -707,7 +714,6 @@ static bool can_reach(const struct half_chan *c,
 		      double fuzz, const struct siphash_seed *base_seed,
 		      struct amount_msat *newtotal, struct amount_msat *newrisk)
 {
-	/* FIXME: Bias against smaller channels. */
 	struct amount_msat fee;
 
 	if (!amount_msat_fee(&fee, total, c->base_fee, c->proportional_fee))
@@ -736,7 +742,8 @@ static bool can_reach(const struct half_chan *c,
 	if (!hc_can_carry(c, *newtotal))
 		return false;
 
-	if (!risk_add_fee(newrisk, *newtotal, c->delay, riskfactor, riskbias))
+	if (!risk_add_fee(newrisk, *newtotal, c->htlc_maximum, c->delay,
+			  riskfactor, riskbias))
 		return false;
 
 	return true;
